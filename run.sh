@@ -5,7 +5,7 @@ __dirname=$(cd "$(dirname "$0")"; pwd -P)
 cd "${__dirname}"
 
 usage(){
-  echo "Usage: $0 [--file COMPOSE_FILE] [--port N] [--worker] [--update-models] [--download-models] [--rebuild] [--all]"
+  echo "Usage: $0 [--file COMPOSE_FILE] [--port N] [--worker] [--update-models] [--download-models] [--rebuild] [--all] [--langs LANGS]"
   echo
   echo "Run LibreTranslate API or Celery worker using Docker Compose."
   echo
@@ -17,6 +17,7 @@ usage(){
   echo "  --download-models     Download models only (no server start)"
   echo "  --rebuild             Rebuild Docker image before starting"
   echo "  --all                 Start both API and Celery worker"
+  echo "  --langs LANGS         Comma-separated language codes to download (default: all)"
   echo "  --help                Show this message"
   echo
   exit
@@ -30,47 +31,22 @@ RUN_API=false
 UPDATE_MODELS=false
 DOWNLOAD_MODELS=false
 REBUILD=false
+LANGS=""
 
 # --- Argument Parsing ---
 while [[ $# -gt 0 ]]; do
   key="$1"
   case $key in
-    --file)
-      COMPOSE_FILE="$2"
-      shift 2
-      ;;
-    --port)
-      LT_PORT="$2"
-      shift 2
-      ;;
-    --worker)
-      RUN_WORKER=true
-      shift
-      ;;
-    --update-models|--update_models)
-      UPDATE_MODELS=true
-      shift
-      ;;
-    --download-models)
-      DOWNLOAD_MODELS=true
-      shift
-      ;;
-    --rebuild)
-      REBUILD=true
-      shift
-      ;;
-    --all)
-      RUN_WORKER=true
-      RUN_API=true
-      shift
-      ;;
-    --help)
-      usage
-      ;;
-    *)
-      echo "Unknown option: $1"
-      usage
-      ;;
+    --file) COMPOSE_FILE="$2"; shift 2 ;;
+    --port) LT_PORT="$2"; shift 2 ;;
+    --worker) RUN_WORKER=true; shift ;;
+    --update-models|--update_models) UPDATE_MODELS=true; shift ;;
+    --download-models) DOWNLOAD_MODELS=true; shift ;;
+    --rebuild) REBUILD=true; shift ;;
+    --all) RUN_WORKER=true; RUN_API=true; shift ;;
+    --langs) LANGS="$2"; shift 2 ;;
+    --help) usage ;;
+    *) echo "Unknown option: $1"; usage ;;
   esac
 done
 
@@ -91,7 +67,12 @@ fi
 # --- Download / Update Models ---
 if [ "$UPDATE_MODELS" = true ] || [ "$DOWNLOAD_MODELS" = true ]; then
   echo "🔄 Downloading LibreTranslate models..."
-  $COMPOSE_CMD run --rm --entrypoint "./venv/bin/python" libretranslate scripts/install_models.py
+  if [ -n "$LANGS" ]; then
+    echo "Downloading only models for languages: $LANGS"
+    $COMPOSE_CMD run --rm --entrypoint "./venv/bin/python" libretranslate scripts/install_models.py --load_only_lang_codes "$LANGS"
+  else
+    $COMPOSE_CMD run --rm --entrypoint "./venv/bin/python" libretranslate scripts/install_models.py
+  fi
   echo "✅ Model download complete."
 
   # If --download-models, exit after downloading
