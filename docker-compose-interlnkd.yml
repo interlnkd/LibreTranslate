@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  libretranslate:
+    container_name: libretranslate
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "./venv/bin/python scripts/healthcheck.py"]
+      interval: 10s
+      timeout: 4s
+      retries: 4
+      start_period: 5s
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - SLACK_CHANNEL_ID=${SLACK_CHANNEL_ID}
+      - SLACK_TOKEN=${SLACK_TOKEN}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - ENV_ENVIRONMENT=${ENV_ENVIRONMENT}
+    volumes:
+      - libretranslate_models:/home/libretranslate/.local:rw
+      - ./app:/app/app:rw
+      - ./scripts:/app/scripts:rw
+
+  celery_worker:
+    container_name: libretranslate_celery
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    entrypoint: ""  
+    command: ./venv/bin/python -m
+    depends_on:
+      - libretranslate
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - SLACK_CHANNEL_ID=${SLACK_CHANNEL_ID}
+      - SLACK_TOKEN=${SLACK_TOKEN}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - ENV_ENVIRONMENT=${ENV_ENVIRONMENT}
+    volumes:
+      - libretranslate_models:/home/libretranslate/.local:rw
+      - ./app:/app/app:rw
+      - ./scripts:/app/scripts:rw
+
+  redis:
+    container_name: libretranslate_redis
+    image: redis:latest
+    ports:
+      - "6381:6379"
+
+volumes:
+  libretranslate_models:

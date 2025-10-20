@@ -1,0 +1,122 @@
+name: Build and Deploy to AWS EC2 instance production server
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ENV_ENVIRONMENT: ${{ secrets.ENV_ENVIRONMENT }}
+  AWS_SSH_PRIVATE_KEY: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
+  AWS_UBUNTU_HOST: ${{ secrets.AWS_UBUNTU_HOST }}
+  AWS_UBUNTU_USER: ${{ secrets.AWS_UBUNTU_USER }}
+  SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+  SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Check and create directory on the Ubuntu server
+        run: |
+          echo "${{ env.AWS_SSH_PRIVATE_KEY }}" > key.pem && chmod 600 key.pem
+          ssh -o StrictHostKeyChecking=no -i key.pem $AWS_UBUNTU_USER@$AWS_UBUNTU_HOST << 'ENDSSH'
+
+          # Install git if not exists
+          if ! type git > /dev/null; then
+            sudo apt-get install -y git
+          fi
+
+          # Install Docker if not exists
+          if ! type docker > /dev/null; then
+            # Add Docker's official GPG key:
+            sudo apt-get update
+            sudo apt-get install ca-certificates curl gnupg
+            sudo install -m 0755 -d /etc/apt/keyrings
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+            sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+            # Add the repository to Apt sources:
+            echo \
+              "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+              "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
+              sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+            sudo apt-get update
+            sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+            sudo chmod 666 /var/run/docker.sock
+          fi
+
+          # Install Nginx if not exists
+          if ! type nginx > /dev/null; then
+            sudo apt-get install -y nginx
+          fi
+
+          # Restart Nginx to apply new configuration
+          sudo systemctl restart nginx
+
+          cd ~/
+
+          if [ ! -d "LibreTranslate" ]; then
+              eval "$(ssh-agent -s)"
+              ssh-add ~/.ssh/ml_learning_git
+              git clone git@github.com:InterLnkd/LibreTranslate.git
+          else
+              echo "Folder already exists."
+          fi
+
+          # Navigate to your project directory and deploy
+
+          cd LibreTranslate
+
+          # set ssh agent
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/ml_learning_git
+          pwd
+
+          git checkout main && git fetch origin main && git reset --hard origin/main
+
+          if [ ! -f "/etc/nginx/sites-available/mlsvc.conf" ]; then
+              # Copy nginx.conf from repository to the appropriate location
+              sudo cp app/nginx/nginx.conf /etc/nginx/sites-available/mlsvc.conf
+              sudo ln -s /etc/nginx/sites-available/mlsvc.conf /etc/nginx/sites-enabled
+          else
+              echo "File already exists."
+              sudo rm -f /etc/nginx/sites-available/mlsvc.conf
+              sudo rm -f /etc/nginx/sites-enabled/mlsvc.conf
+
+              # Copy nginx.conf from repository to the appropriate location
+              sudo cp app/nginx/nginx.conf /etc/nginx/sites-available/mlsvc.conf
+              sudo ln -s /etc/nginx/sites-available/mlsvc.conf /etc/nginx/sites-enabled
+          fi
+
+          sudo systemctl restart nginx
+
+          cd LibreTranslate
+          pwd
+          rm .env || true
+
+          echo "AWS_ACCESS_KEY_ID=${{env.AWS_ACCESS_KEY_ID}}" > .env
+          echo "AWS_SECRET_ACCESS_KEY=${{env.AWS_SECRET_ACCESS_KEY}}" >> .env
+          echo "AWS_REGION=${{env.AWS_REGION}}" >> .env
+          echo "ENV_ENVIRONMENT=${{env.ENV_ENVIRONMENT}}" >> .env
+          echo "SLACK_CHANNEL_ID=${{env.SLACK_CHANNEL_ID}}" >> .env
+          echo "SLACK_TOKEN=${{env.SLACK_TOKEN}}" >> .env
+          echo "SLACK_WEBHOOK_URL=${{env.SLACK_WEBHOOK_URL}}" >> .env
+          pwd
+
+          chmod +x ./run.sh
+
+          ./run.sh --port 5001 --file docker-compose-interlnkd.yml --update-models
+
+          docker-compose up -d
+          rm .env || true
+          docker system prune -a -f
+
+          ENDSSH

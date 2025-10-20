@@ -135,3 +135,5 @@ installed_models/
 # Misc
 api_keys.db
 suggestions.db
+*.DS_Store
+*.env

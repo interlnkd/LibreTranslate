@@ -1,92 +1,79 @@
 #!/bin/bash
 set -eo pipefail
+
 __dirname=$(cd "$(dirname "$0")"; pwd -P)
 cd "${__dirname}"
 
-platform="Linux" # Assumed
-uname=$(uname)
-case $uname in
-    "Darwin")
-    platform="MacOS / OSX"
-    ;;
-    MINGW*)
-    platform="Windows"
-    ;;
-esac
-
 usage(){
-  echo "Usage: $0 [--port N]"
+  echo "Usage: $0 [--file COMPOSE_FILE] [--port N] [--worker] [--update-models]"
   echo
-  echo "Run LibreTranslate using docker."
+  echo "Run LibreTranslate API or Celery worker using Docker Compose."
+  echo
+  echo "Options:"
+  echo "  --file FILE           Specify docker-compose file (default: docker-compose.yml)"
+  echo "  --port PORT           Port for LibreTranslate API (default: 5001)"
+  echo "  --worker              Run only Celery worker service"
+  echo "  --update-models       Download or update translation models before starting"
+  echo "  --help                Show this message"
   echo
   exit
 }
 
-export LT_PORT=5000
+# --- Configuration Variables ---
+COMPOSE_FILE="docker-compose.yml"
+LT_PORT=5001
+RUN_WORKER=false
+UPDATE_MODELS=false
 
-# Parse args for overrides
-ARGS=()
-while [[ $# -gt 0 ]]
-do
-key="$1"
-case $key in
+# --- Argument Parsing ---
+while [[ $# -gt 0 ]]; do
+  key="$1"
+  case $key in
+    --file)
+      COMPOSE_FILE="$2"
+      shift 2
+      ;;
     --port)
-    export LT_PORT="$2"
-    ARGS+=("$1")
-    ARGS+=("$2") # save it in an array for later
-    shift # past argument
-    shift # past value
-    ;;
-    --debug)
-    export LT_DEBUG=YES
-    ARGS+=("$1")
-    shift # past argument
-    ;;
-    --api-keys)
-    export DB_VOLUME="-v lt-db:/app/db"
-    ARGS+=("$1")
-    shift # past argument
-    ;;
+      LT_PORT="$2"
+      shift 2
+      ;;
+    --worker)
+      RUN_WORKER=true
+      shift
+      ;;
+    --update-models|--update_models)
+      UPDATE_MODELS=true
+      shift
+      ;;
     --help)
-    usage
-    ;;
-    *)    # unknown option
-    ARGS+=("$1")
-    shift # past argument
-    ;;
-esac
+      usage
+      ;;
+    *)
+      echo "Unknown option: $1"
+      usage
+      ;;
+  esac
 done
 
-# $1 = command | $2 = help_text | $3 = install_command (optional)
-check_command(){
-    hash "$1" 2>/dev/null || not_found=true
-    if [[ $not_found ]]; then
-        check_msg_prefix="Checking for $1... "
+# --- Prerequisite Checks ---
+hash docker 2>/dev/null || { echo "Docker not found! Install Docker first."; exit 1; }
+hash docker-compose 2>/dev/null || { echo "Docker Compose not found! Install Docker Compose first."; exit 1; }
 
-        # Can we attempt to install it?
-        if [[ -n "$3" ]]; then
-            echo -e "$check_msg_prefix \033[93mnot found, we'll attempt to install\033[39m"
-            $3 || sudo $3
+export LT_PORT=$LT_PORT
+COMPOSE_CMD="docker-compose -f $COMPOSE_FILE"
 
-            # Recurse, but don't pass the install command
-            check_command "$1" "$2"
-        else
-            check_msg_result="\033[91m can't find $1! Check that the program is installed and that you have added the proper path to the program to your PATH environment variable before launching the program. If you change your PATH environment variable, remember to close and reopen your terminal. $2\033[39m"
-        fi
-    else
-        check_msg_prefix="Checking for $1... "
-        check_msg_result="\033[92m found\033[39m"
-    fi
+# --- Update Models (Proper Entrypoint Override) ---
+if [ "$UPDATE_MODELS" = true ]; then
+  echo "🔄 Updating LibreTranslate models..."
+  $COMPOSE_CMD run --rm --entrypoint "./venv/bin/python" libretranslate scripts/install_models.py
+  echo "✅ Model update complete."
+fi
 
-    echo -e "$check_msg_prefix $check_msg_result"
-    if [[ $not_found ]]; then
-        return 1
-    fi
-}
-
-environment_check(){
-    check_command "docker" "https://www.docker.com/"
-}
-
-environment_check
-docker run -ti --rm -p $LT_PORT:$LT_PORT $DB_VOLUME -v lt-local:/home/libretranslate/.local libretranslate/libretranslate ${ARGS[@]}
+# --- Start Services ---
+if [ "$RUN_WORKER" = true ]; then
+  echo "🚀 Starting Celery worker service from $COMPOSE_FILE..."
+  $COMPOSE_CMD up libretranslate_celery
+else
+  echo "🚀 Starting LibreTranslate API and dependencies from $COMPOSE_FILE..."
+  $COMPOSE_CMD up
+fi
