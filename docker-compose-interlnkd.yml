@@ -35,7 +35,7 @@ services:
       - 0.0.0.0:5001
       - --workers
       - "2"
-      - libretranslate.app:create_app()
+      - wsgi:app
 
   celery_worker:
     container_name: libretranslate_celery
