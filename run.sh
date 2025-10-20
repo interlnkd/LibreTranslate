@@ -5,7 +5,7 @@ __dirname=$(cd "$(dirname "$0")"; pwd -P)
 cd "${__dirname}"
 
 usage(){
-  echo "Usage: $0 [--file COMPOSE_FILE] [--port N] [--worker] [--update-models]"
+  echo "Usage: $0 [--file COMPOSE_FILE] [--port N] [--worker] [--update-models] [--download-models] [--rebuild]"
   echo
   echo "Run LibreTranslate API or Celery worker using Docker Compose."
   echo
@@ -14,6 +14,8 @@ usage(){
   echo "  --port PORT           Port for LibreTranslate API (default: 5001)"
   echo "  --worker              Run only Celery worker service"
   echo "  --update-models       Download or update translation models before starting"
+  echo "  --download-models     Download models only (no server start)"
+  echo "  --rebuild             Rebuild Docker image before starting"
   echo "  --help                Show this message"
   echo
   exit
@@ -24,6 +26,8 @@ COMPOSE_FILE="docker-compose.yml"
 LT_PORT=5001
 RUN_WORKER=false
 UPDATE_MODELS=false
+DOWNLOAD_MODELS=false
+REBUILD=false
 
 # --- Argument Parsing ---
 while [[ $# -gt 0 ]]; do
@@ -45,6 +49,14 @@ while [[ $# -gt 0 ]]; do
       UPDATE_MODELS=true
       shift
       ;;
+    --download-models)
+      DOWNLOAD_MODELS=true
+      shift
+      ;;
+    --rebuild)
+      REBUILD=true
+      shift
+      ;;
     --help)
       usage
       ;;
@@ -62,11 +74,24 @@ hash docker-compose 2>/dev/null || { echo "Docker Compose not found! Install Doc
 export LT_PORT=$LT_PORT
 COMPOSE_CMD="docker-compose -f $COMPOSE_FILE"
 
-# --- Update Models (Proper Entrypoint Override) ---
-if [ "$UPDATE_MODELS" = true ]; then
-  echo "🔄 Updating LibreTranslate models..."
+# --- Rebuild Docker Image ---
+if [ "$REBUILD" = true ]; then
+  echo "🔨 Rebuilding LibreTranslate Docker image..."
+  $COMPOSE_CMD build libretranslate
+  echo "✅ Rebuild complete."
+fi
+
+# --- Download / Update Models ---
+if [ "$UPDATE_MODELS" = true ] || [ "$DOWNLOAD_MODELS" = true ]; then
+  echo "🔄 Downloading LibreTranslate models..."
   $COMPOSE_CMD run --rm --entrypoint "./venv/bin/python" libretranslate scripts/install_models.py
-  echo "✅ Model update complete."
+  echo "✅ Model download complete."
+
+  # If --download-models, exit after downloading
+  if [ "$DOWNLOAD_MODELS" = true ]; then
+    echo "🚀 Models downloaded. Exiting as requested by --download-models."
+    exit 0
+  fi
 fi
 
 # --- Start Services ---
