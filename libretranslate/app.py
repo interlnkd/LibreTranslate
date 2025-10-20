@@ -20,7 +20,7 @@ from translatehtml import translate_html
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import http_date
 from werkzeug.utils import secure_filename
-from celery_tasks import test_task
+from .celery_tasks import test_task
 
 from libretranslate import flood, remove_translated_files, scheduler, secret, security, storage
 from libretranslate.language import model2iso, iso2model, detect_languages, improve_translation_formatting

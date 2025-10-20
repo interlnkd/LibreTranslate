@@ -16,10 +16,10 @@ RUN python -m venv venv && ./venv/bin/pip install --no-cache-dir --upgrade pip
 # Copy app code
 COPY . .
 
-# Install dependencies
+# Install dependencies (FIXED: torch version changed to 2.5.0)
 RUN ./venv/bin/pip install --no-cache-dir \
       Babel==2.12.1 \
-      torch==2.2.0 --extra-index-url https://download.pytorch.org/whl/cpu \
+      torch==2.5.0 --extra-index-url https://download.pytorch.org/whl/cpu \
       "numpy<2" \
       celery \
       redis \
@@ -56,5 +56,4 @@ RUN if [ "$with_models" = "true" ]; then \
 
 EXPOSE 5001
 
-# Default entrypoint for LibreTranslate API
-# ENTRYPOINT ["./venv/bin/libretranslate", "--host", "*"]
+ENTRYPOINT ["./venv/bin/libretranslate", "--host", "*"]
