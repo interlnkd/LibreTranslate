@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   libretranslate:
     container_name: libretranslate
@@ -29,7 +31,7 @@ services:
       - ./scripts:/app/scripts:rw
     depends_on:
       - redis
-    command: 
+    command:
       - ./venv/bin/gunicorn
       - --bind
       - 0.0.0.0:5001
@@ -37,15 +39,16 @@ services:
       - "2"
       - wsgi:app
 
-  celery_worker:
+  libretranslate_celery:
     container_name: libretranslate_celery
     build:
       context: .
       dockerfile: docker/Dockerfile
-    command: ./venv/bin/libretranslate celery worker
+    command: ./venv/bin/celery -A libretranslate.celery_app worker --loglevel=info
     depends_on:
       - libretranslate
       - redis
+    restart: unless-stopped
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
@@ -62,7 +65,9 @@ services:
       - ./scripts:/app/scripts:rw
 
   redis:
-    image: redis:latest
+    image: redis:7-alpine
+    container_name: libretranslate_redis
+    restart: unless-stopped
 
 volumes:
   libretranslate_models:

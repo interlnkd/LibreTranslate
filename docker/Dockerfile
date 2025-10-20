@@ -63,4 +63,4 @@ RUN if [ "$with_models" = "true" ]; then \
 
 EXPOSE 5001
 
-ENTRYPOINT ["./venv/bin/gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "wsgi:app"]
+# ENTRYPOINT ["./venv/bin/gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "wsgi:app"]
