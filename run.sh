@@ -5,7 +5,7 @@ __dirname=$(cd "$(dirname "$0")"; pwd -P)
 cd "${__dirname}"
 
 usage(){
-  echo "Usage: $0 [--file COMPOSE_FILE] [--port N] [--worker] [--update-models] [--download-models] [--rebuild]"
+  echo "Usage: $0 [--file COMPOSE_FILE] [--port N] [--worker] [--update-models] [--download-models] [--rebuild] [--all]"
   echo
   echo "Run LibreTranslate API or Celery worker using Docker Compose."
   echo
@@ -16,6 +16,7 @@ usage(){
   echo "  --update-models       Download or update translation models before starting"
   echo "  --download-models     Download models only (no server start)"
   echo "  --rebuild             Rebuild Docker image before starting"
+  echo "  --all                 Start both API and Celery worker"
   echo "  --help                Show this message"
   echo
   exit
@@ -25,6 +26,7 @@ usage(){
 COMPOSE_FILE="docker-compose.yml"
 LT_PORT=5001
 RUN_WORKER=false
+RUN_API=false
 UPDATE_MODELS=false
 DOWNLOAD_MODELS=false
 REBUILD=false
@@ -55,6 +57,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     --rebuild)
       REBUILD=true
+      shift
+      ;;
+    --all)
+      RUN_WORKER=true
+      RUN_API=true
       shift
       ;;
     --help)
@@ -95,10 +102,13 @@ if [ "$UPDATE_MODELS" = true ] || [ "$DOWNLOAD_MODELS" = true ]; then
 fi
 
 # --- Start Services ---
-if [ "$RUN_WORKER" = true ]; then
-  echo "🚀 Starting Celery worker service from $COMPOSE_FILE..."
+if [ "$RUN_WORKER" = true ] && [ "$RUN_API" = true ]; then
+  echo "🚀 Starting API and Celery worker..."
+  $COMPOSE_CMD up
+elif [ "$RUN_WORKER" = true ]; then
+  echo "🚀 Starting Celery worker..."
   $COMPOSE_CMD up libretranslate_celery
 else
-  echo "🚀 Starting LibreTranslate API and dependencies from $COMPOSE_FILE..."
+  echo "🚀 Starting API..."
   $COMPOSE_CMD up
 fi
