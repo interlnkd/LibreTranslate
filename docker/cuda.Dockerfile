@@ -42,5 +42,5 @@ RUN pip3 install Babel==2.12.1 && python3 scripts/compile_locales.py \
 # See: https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html#post-installation-actions
 # ENV LD_LIBRARY_PATH=/usr/local/cuda/lib:/usr/local/cuda/lib64
 
-EXPOSE 5000
+EXPOSE 5001
 ENTRYPOINT [ "libretranslate", "--host", "*" ]

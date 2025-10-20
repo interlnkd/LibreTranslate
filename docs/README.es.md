@@ -140,7 +140,7 @@ pip install libretranslate
 libretranslate [args]
 ```
 
-Luego abra un navegador web para <http://localhost:5000>
+Luego abra un navegador web para <http://localhost:5001>
 
 De forma predeterminada, LibreTranslate instalará compatibilidad con todos los idiomas disponibles. Para cargar solo ciertos idiomas y reducir el tiempo de inicio, puede usar el argumento **--load-only**:
 
@@ -213,7 +213,7 @@ Los argumentos que se pasan al proceso o se configuran mediante variables de ent
 | Argumento                   | Descripción                                                                                                                                                                                                 | Parámetro predeterminado                     | Sobre nombre                   |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | --------------------------- |
 | --host                     | Establecer el host para vincular el servidor to                                                                                                                                                                              | `127.0.0.1`                           | LT_HOST                     |
-| --port                     | Establecer el puerto al que se vinculará el servidor                                                                                                                                                                              | `5000`                                | LT_PORT                     |
+| --port                     | Establecer el puerto al que se vinculará el servidor                                                                                                                                                                              | `5001`                                | LT_PORT                     |
 | --char-limit               | Establecer límite de caracteres                                                                                                                                                                                         | `Sin Limite`                            | LT_CHAR_LIMIT               |
 | --req-limit                | Establecer el número máximo de solicitudes por minuto por cliente (fuera de los límites establecidos por las claves API)                                                                                                                   | `Sin Limite`                            | LT_REQ_LIMIT                |
 | --req-limit-storage        | URI de almacenamiento para limitar el almacenamiento de datos de solicitudes. Ver [Flask Limiter](https://flask-limiter.readthedocs.io/en/stable/configuration.html)                                                                   | `memoria://`                           | LT_REQ_LIMIT_STORAGE        |
@@ -230,7 +230,7 @@ Los argumentos que se pasan al proceso o se configuran mediante variables de ent
 | --load-only                | Establecer idiomas disponibles                                                                                                                                                                                     | `Vacío (utilizar todo de argostranslate)` | LT_LOAD_ONLY                |
 | --threads                  | Establecer número de subprocesos                                                                                                                                                                                       | `4`                                   | LT_THREADS                  |
 | --metrics-auth-token       | Proteja el punto final /metrics permitiendo solo clientes que tengan un token de portador de autorización válido                                                                                                         | `Vacío (no se requiere autenticación)`            | LT_METRICS_AUTH_TOKEN       |
-| --url-prefix               | Agregar prefijo a la URL: ejemplo.com:5000/prefijo-url/                                                                                                                                                             | `/`                                   | LT_URL_PREFIX               |
+| --url-prefix               | Agregar prefijo a la URL: ejemplo.com:5001/prefijo-url/                                                                                                                                                             | `/`                                   | LT_URL_PREFIX               |
 
 ### Notas:
 
@@ -262,13 +262,13 @@ También puede ejecutar el script `scripts/install_models.py`.
 
 ```bash
 pip install gunicorn
-gunicorn --bind 0.0.0.0:5000 'wsgi:app'
+gunicorn --bind 0.0.0.0:5001 'wsgi:app'
 ```
 
 Puedes pasar los argumentos de la aplicación directamente a Gunicorn mediante:
 
 ```bash
-gunicorn --bind 0.0.0.0:5000 'wsgi:app(api_keys=True)'
+gunicorn --bind 0.0.0.0:5001 'wsgi:app(api_keys=True)'
 ```
 
 ## Implementación de Kubernetes
@@ -305,10 +305,10 @@ Para emitir una nueva clave API con un límite de 120 solicitudes por minuto:
 ltmanage keys add 120
 ```
 
-Para emitir una nueva clave API con 120 solicitudes por minuto y un máximo de 5000 caracteres por solicitud:
+Para emitir una nueva clave API con 120 solicitudes por minuto y un máximo de 5001 caracteres por solicitud:
 
 ```bash
-ltmanage keys add 120 --char-limit 5000
+ltmanage keys add 120 --char-limit 5001
 ```
 
 Si cambió la ruta de la base de datos de claves API:
@@ -333,7 +333,7 @@ ltmanage keys
 
 LibreTranslate tiene Prometheus Capacidades de [exportador](https://prometheus.io/docs/instrumenting/exporters/) cuando pasa el argumento `--metrics` al inicio (deshabilitado de manera predeterminada). Cuando las métricas están habilitadas, se monta un punto final `/metrics` en la instancia:
 
-<http://localhost:5000/metrics>
+<http://localhost:5001/metrics>
 
 ```promql
 # HELP libretranslate_http_requests_in_flight Métrica multiproceso
@@ -356,7 +356,7 @@ scrape_configs:
 #credentials: "mytoken"
 
 static_configs:
-- targets: ["localhost:5000"]
+- targets: ["localhost:5001"]
 ```
 
 Para proteger el endpoint `/metrics`, también puedes usar `--metrics-auth-token mytoken`.
@@ -367,7 +367,7 @@ Si usa Gunicorn, asegúrese de crear un directorio para almacenar las métricas 
 mkdir -p /tmp/prometheus_data
 rm /tmp/prometheus_data/*
 export PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_data
-gunicorn -c scripts/gunicorn_conf.py --bind 0.0.0.0:5000 'wsgi:app(metrics=True)'
+gunicorn -c scripts/gunicorn_conf.py --bind 0.0.0.0:5001 'wsgi:app(metrics=True)'
 ```
 
 ## Enlaces de lenguaje
@@ -510,10 +510,10 @@ En `$HOME/.local/share/argos-translate/packages`. En Windows, es `C:\Users\youru
 Sí, aquí hay ejemplos de configuración para Apache2 y Caddy que redirigen un subdominio (con certificado HTTPS) a LibreTranslate ejecutándose en un contenedor en el host local.
 
 ```bash
-sudo docker run -ti --rm -p 127.0.0.1:5000:5000 libretranslate/libretranslate
+sudo docker run -ti --rm -p 127.0.0.1:5001:5001 libretranslate/libretranslate
 ```
 
-Puede eliminar `127.0.0.1` del comando anterior si desea acceder a él desde `domain.tld:5000`, además de `subdomain.domain.tld` (esto puede ser útil para determinar si hay un problema con Apache 2 o el contenedor de Docker).
+Puede eliminar `127.0.0.1` del comando anterior si desea acceder a él desde `domain.tld:5001`, además de `subdomain.domain.tld` (esto puede ser útil para determinar si hay un problema con Apache 2 o el contenedor de Docker).
 
 Agregue `--restart unless-stopped` si desea que este contenedor se inicie al arrancar, a menos que se detenga manualmente.
 
@@ -540,8 +540,8 @@ Redirigir / https://[SU_DOMINIO]
 <HostVirtual *:443>
 NombreDeServidor https://[SU_DOMINIO]
 
-PassProxy / http://127.0.0.1:5000/
-PassReverseProxy / http://127.0.0.1:5000/
+PassProxy / http://127.0.0.1:5001/
+PassReverseProxy / http://127.0.0.1:5001/
 ProxyPreserveHost Activado
 
 SSLEngine Activado
@@ -569,7 +569,7 @@ Reemplace [SU_DOMINIO] con su dominio completo; por ejemplo, `translate.domain.t
 ```Caddyfile
 #Libretranslate
 [SU_DOMINIO] {
-reverse_proxy localhost:5000
+reverse_proxy localhost:5001
 }
 ```
 
@@ -648,7 +648,7 @@ servidor {
 
 
   location / {
-      proxy_pass http://127.0.0.1:5000/;
+      proxy_pass http://127.0.0.1:5001/;
       proxy_set_header Host $http_host;
       proxy_set_header X-Real-IP $remote_addr;
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

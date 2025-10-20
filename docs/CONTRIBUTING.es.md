@@ -41,7 +41,7 @@ Ejecutar en desarrollo:
 hatch run dev --debug
 ```
 
-Luego, abre un navegador web en <http://localhost:5000>
+Luego, abre un navegador web en <http://localhost:5001>
 
 También puedes iniciar una nueva shell en un entorno virtual con libretranslate instalado:
 
@@ -85,7 +85,7 @@ hatch env prune
 Linux/MacOS: `./run.sh [args]`
 Windows: `run.bat [args]`
 
-Luego, abre un navegador web en <http://localhost:5000>
+Luego, abre un navegador web en <http://localhost:5001>
 
 ## Construir con Docker
 
@@ -98,7 +98,7 @@ Si quieres ejecutar la imagen de Docker en un entorno completamente sin conexió
 Ejecute la imagen compilada:
 
 ```bash
-docker run -it -p 5000:5000 libretranslate [args]
+docker run -it -p 5001:5001 libretranslate [args]
 ```
 
 O compila y ejecuta con Docker Compose:

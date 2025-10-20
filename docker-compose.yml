@@ -3,7 +3,7 @@ services:
     container_name: libretranslate
     image: libretranslate/libretranslate:latest
     ports:
-      - "5000:5000"
+      - "5001:5001"
     restart: unless-stopped
     healthcheck:
       test: ['CMD-SHELL', './venv/bin/python scripts/healthcheck.py']

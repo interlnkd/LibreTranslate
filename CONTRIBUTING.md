@@ -41,7 +41,7 @@ Run in development:
 hatch run dev --debug
 ```
 
-Then open a web browser to <http://localhost:5000>
+Then open a web browser to <http://localhost:5001>
 
 You can also start a new shell in a virtual environment with libretranslate installed:
 
@@ -85,7 +85,7 @@ hatch env prune
 Linux/macOS: `./run.sh [args]`
 Windows: `run.bat [args]`
 
-Then open a web browser to <http://localhost:5000>
+Then open a web browser to <http://localhost:5001>
 
 ## Build with Docker
 
@@ -98,7 +98,7 @@ If you want to run the Docker image in a complete offline environment, you need 
 Run the built image:
 
 ```bash
-docker run -it -p 5000:5000 libretranslate [args]
+docker run -it -p 5001:5001 libretranslate [args]
 ```
 
 Or build and run using Docker Compose:

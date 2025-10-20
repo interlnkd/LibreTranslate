@@ -1,7 +1,7 @@
 import requests
 import os
 
-port = os.environ.get('LT_PORT', '5000')
+port = os.environ.get('LT_PORT', '5001')
 response = requests.post(
     url=f'http://localhost:{port}/translate',
     headers={'Content-Type': 'application/json'},
