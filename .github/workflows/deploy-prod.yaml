@@ -113,7 +113,7 @@ jobs:
 
           chmod +x ./run.sh
 
-          ./run.sh --port 5001 --file docker-compose-interlnkd.yml --update-models
+          ./run.sh --port 5000 --file docker-compose-interlnkd.yml --update-models
 
           docker-compose up -d
           rm .env || true
