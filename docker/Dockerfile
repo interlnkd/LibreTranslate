@@ -54,7 +54,7 @@ RUN if [ "$with_models" = "true" ]; then \
       fi \
     fi
 
-EXPOSE 5000
+EXPOSE 5001
 
 # Default entrypoint for LibreTranslate API
-ENTRYPOINT ["./venv/bin/libretranslate", "--host", "*"]
+# ENTRYPOINT ["./venv/bin/libretranslate", "--host", "*"]

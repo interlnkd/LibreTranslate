@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     ports:
-      - "5000:5000"
+      - "5001:5000"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "./venv/bin/python scripts/healthcheck.py"]
@@ -29,6 +29,8 @@ services:
       - libretranslate_models:/home/libretranslate/.local:rw
       - ./app:/app/app:rw
       - ./scripts:/app/scripts:rw
+    depends_on:
+      - redis
 
   celery_worker:
     container_name: libretranslate_celery
@@ -56,10 +58,7 @@ services:
       - ./scripts:/app/scripts:rw
 
   redis:
-    container_name: libretranslate_redis
     image: redis:latest
-    ports:
-      - "6381:6379"
 
 volumes:
   libretranslate_models:
