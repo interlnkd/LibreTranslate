@@ -23,6 +23,7 @@ usage(){
   exit
 }
 
+# --- Configuration Variables ---
 COMPOSE_FILE="docker-compose.yml"
 LT_PORT=5001
 RUN_WORKER=false
@@ -32,6 +33,7 @@ DOWNLOAD_MODELS=false
 REBUILD=false
 LANGS=""
 
+# --- Argument Parsing ---
 while [[ $# -gt 0 ]]; do
   key="$1"
   case $key in
@@ -48,18 +50,28 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# --- Prerequisite Checks ---
 hash docker 2>/dev/null || { echo "Docker not found! Install Docker first."; exit 1; }
-hash docker-compose 2>/dev/null || { echo "Docker Compose not found! Install Docker Compose first."; exit 1; }
+# Use 'docker compose' instead of 'docker-compose' for modern systems
+hash docker-compose 2>/dev/null || hash docker 2>/dev/null && docker compose version >/dev/null 2>&1 || { echo "Docker Compose not found! Install Docker Compose first."; exit 1; }
 
 export LT_PORT=$LT_PORT
-COMPOSE_CMD="docker-compose -f $COMPOSE_FILE"
+# Set COMPOSE_CMD to use 'docker compose' or 'docker-compose'
+if hash docker compose >/dev/null 2>&1; then
+  COMPOSE_CMD="docker compose -f $COMPOSE_FILE"
+else
+  COMPOSE_CMD="docker-compose -f $COMPOSE_FILE"
+fi
 
+
+# --- Rebuild Docker Image ---
 if [ "$REBUILD" = true ]; then
   echo "🔨 Rebuilding LibreTranslate Docker image..."
   $COMPOSE_CMD build libretranslate
   echo "✅ Rebuild complete."
 fi
 
+# --- Download / Update Models ---
 if [ "$UPDATE_MODELS" = true ] || [ "$DOWNLOAD_MODELS" = true ]; then
   echo "🔄 Downloading LibreTranslate models..."
   if [ -n "$LANGS" ]; then
@@ -70,12 +82,14 @@ if [ "$UPDATE_MODELS" = true ] || [ "$DOWNLOAD_MODELS" = true ]; then
   fi
   echo "✅ Model download complete."
 
+  # If --download-models, exit after downloading
   if [ "$DOWNLOAD_MODELS" = true ]; then
     echo "🚀 Models downloaded. Exiting as requested by --download-models."
     exit 0
   fi
 fi
 
+# --- Start Services ---
 if [ "$RUN_WORKER" = true ] && [ "$RUN_API" = true ]; then
   echo "🚀 Starting API and Celery worker..."
   $COMPOSE_CMD up

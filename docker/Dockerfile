@@ -16,7 +16,7 @@ RUN python -m venv venv && ./venv/bin/pip install --no-cache-dir --upgrade pip
 # Copy app code
 COPY . .
 
-# Install dependencies
+# Install dependencies (FIXED: torch=2.5.0, gunicorn>=21.0.0, py-cpuinfo, plus necessary libs)
 RUN ./venv/bin/pip install --no-cache-dir \
       Babel==2.12.1 \
       torch==2.5.0 --extra-index-url https://download.pytorch.org/whl/cpu \
@@ -28,7 +28,7 @@ RUN ./venv/bin/pip install --no-cache-dir \
       argostranslate \
       py-cpuinfo \
       python-dotenv \
-      "gunicorn>=3.7,<3.11" \
+      "gunicorn>=21.0.0" \
       . \
   && ./venv/bin/python scripts/compile_locales.py \
   && ./venv/bin/pip cache purge
@@ -62,9 +62,3 @@ RUN if [ "$with_models" = "true" ]; then \
     fi
 
 EXPOSE 5001
-
-# Default entrypoint for LibreTranslate API using Gunicorn
-# Assuming the LibreTranslate app object is named 'app' or similar in 'libretranslate.app'
-# You may need to adjust the module path (libretranslate.app:app) based on your project's structure.
-# Setting workers to 2 for a basic setup; adjust based on CPU cores.
-ENTRYPOINT ["./venv/bin/gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "libretranslate.app:create_app()"]
