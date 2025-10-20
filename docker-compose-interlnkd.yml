@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
   libretranslate:
     container_name: libretranslate
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/Dockerfile 
     ports:
       - "5001:5001"
     restart: unless-stopped
@@ -31,14 +29,20 @@ services:
       - ./scripts:/app/scripts:rw
     depends_on:
       - redis
-
+    command: 
+          - ./venv/bin/gunicorn
+          - --bind
+          - 0.0.0.0:5001
+          - --workers
+          - "2"
+          - libretranslate.app:create_app()
   celery_worker:
     container_name: libretranslate_celery
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: docker/Dockerfile 
     entrypoint: ""  
-    command: ./venv/bin/python -m
+    command: ./venv/bin/libretranslate celery worker
     depends_on:
       - libretranslate
       - redis
