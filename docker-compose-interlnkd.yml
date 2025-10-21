@@ -30,19 +30,55 @@ services:
       - libretranslate_models:/app/.local:rw
     depends_on:
       - redis
+    # Default: Sync workers (stable and reliable)
     # command:
     #   [
     #     "gunicorn",
-    #     "wsgi:app",
+    #     "wsgi:application", 
     #     "--workers",
-    #     "6",
+    #     "4",
+    #     "--worker-class",
+    #     "sync",
+    #     "-b",
+    #     "0.0.0.0:5001",
+    #     "--timeout",
+    #     "300",
+    #     "--access-logfile",
+    #     "-",
+    #     "--error-logfile",
+    #     "-"
+    #   ]
+    # Alternative: Gevent workers (for I/O bound workloads)
+    # command:
+    #   [
+    #     "gunicorn",
+    #     "wsgi:application", 
+    #     "--workers",
+    #     "4",
+    #     "--worker-class",
+    #     "gevent",
+    #     "-b",
+    #     "0.0.0.0:5001",
+    #     "--timeout",
+    #     "300",
+    #     "--access-logfile",
+    #     "-",
+    #     "--error-logfile",
+    #     "-"
+    #   ]
+    # For ASGI (if needed):
+    # command:
+    #   [
+    #     "gunicorn",
+    #     "wsgi:asgi_application",
+    #     "--workers",
+    #     "4", 
     #     "--worker-class",
     #     "uvicorn.workers.UvicornWorker",
     #     "-b",
     #     "0.0.0.0:5001",
     #     "--timeout",
-    #     "300000000",
-    #     "--reload"
+    #     "300"
     #   ]
 
   libretranslate_celery:

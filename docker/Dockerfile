@@ -35,6 +35,8 @@ RUN pip install --no-cache-dir --upgrade pip \
   "numpy<2" \
   uvicorn \
   gunicorn \
+  gevent \
+  asgiref \
   flask \
   requests \
   celery \
@@ -60,4 +62,4 @@ ENV PYTHONPATH=/app
 
 EXPOSE 5001
 
-CMD ["gunicorn", "wsgi:app", "--workers", "6", "--worker-class", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:5001", "--timeout", "300000000", "--reload"]
+CMD ["gunicorn", "wsgi:application", "--workers", "4", "--worker-class", "sync", "-b", "0.0.0.0:5001", "--timeout", "300", "--access-logfile", "-", "--error-logfile", "-"]

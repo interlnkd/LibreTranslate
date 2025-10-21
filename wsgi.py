@@ -1,22 +1,24 @@
 from libretranslate import main
+import sys
 
+# Set WSGI mode
+sys.argv = ['--wsgi']
 
-def app(*args, **kwargs):
-    import sys
-    sys.argv = ['--wsgi']
+# Create the application instance
+application = main()
 
-    for k in kwargs:
-        ck = k.replace("_", "-")
-        if isinstance(kwargs[k], bool):
-            if kwargs[k]:
-                sys.argv.append("--" + ck)
-        else:
-            sys.argv.append("--" + ck)
-            sys.argv.append(kwargs[k])
+# For backwards compatibility, also provide 'app'
+app = application
 
-    instance = main()
+# For ASGI compatibility (uvicorn.workers.UvicornWorker)
+def create_asgi_app():
+    """Create ASGI application by wrapping the WSGI app"""
+    try:
+        from asgiref.wsgi import WsgiToAsgi
+        return WsgiToAsgi(application)
+    except ImportError:
+        # If asgiref is not available, fall back to WSGI
+        return application
 
-    if len(kwargs) == 0:
-        return instance(*args, **kwargs)
-    else:
-        return instance
+# ASGI application for uvicorn
+asgi_application = create_asgi_app()

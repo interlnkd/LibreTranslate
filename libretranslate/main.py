@@ -260,7 +260,7 @@ def main():
             args.url_prefix: create_app(args)
         })
     else:
-        app = DispatcherMiddleware(create_app(args))
+        app = create_app(args)
 
     if '--wsgi' in sys.argv:
         return app
