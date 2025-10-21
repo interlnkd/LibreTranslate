@@ -84,7 +84,7 @@ jobs:
 
           if [ ! -f "/etc/nginx/sites-available/libretranslate.conf" ]; then
               # Copy nginx.conf from repository to the appropriate location
-              sudo cp app/nginx/nginx.conf /etc/nginx/sites-available/libretranslate.conf
+              sudo cp libretranslate/nginx/nginx.conf /etc/nginx/sites-available/libretranslate.conf
               sudo ln -s /etc/nginx/sites-available/libretranslate.conf /etc/nginx/sites-enabled
           else
               echo "File already exists."
