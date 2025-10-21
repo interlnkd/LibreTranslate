@@ -58,25 +58,22 @@ else
   COMPOSE_CMD="docker-compose -f $COMPOSE_FILE"
 fi
 
-# --- Stop and remove old containers ---
 echo "🧹 Stopping and removing existing containers..."
 $COMPOSE_CMD down
 
-# --- Rebuild image if requested ---
 if [ "$REBUILD" = true ]; then
   echo "🔨 Rebuilding LibreTranslate Docker image..."
   $COMPOSE_CMD build libretranslate
   echo "✅ Rebuild complete."
 fi
 
-# --- Download or update models ---
 if [ "$UPDATE_MODELS" = true ] || [ "$DOWNLOAD_MODELS" = true ]; then
   echo "🔄 Downloading LibreTranslate models..."
   if [ -n "$LANGS" ]; then
     echo "📦 Downloading only models for languages: $LANGS"
-    $COMPOSE_CMD run --rm --entrypoint "./venv/bin/python" libretranslate scripts/install_models.py --load_only_lang_codes "$LANGS"
+    $COMPOSE_CMD run --rm --entrypoint "python" libretranslate scripts/install_models.py --load_only_lang_codes "$LANGS"
   else
-    $COMPOSE_CMD run --rm --entrypoint "./venv/bin/python" libretranslate scripts/install_models.py
+    $COMPOSE_CMD run --rm --entrypoint "python" libretranslate scripts/install_models.py
   fi
   echo "✅ Model download complete."
 
@@ -86,7 +83,6 @@ if [ "$UPDATE_MODELS" = true ] || [ "$DOWNLOAD_MODELS" = true ]; then
   fi
 fi
 
-# --- Start containers ---
 if [ "$RUN_WORKER" = true ] && [ "$RUN_API" = true ]; then
   echo "🚀 Starting API and Celery worker..."
   $COMPOSE_CMD up -d

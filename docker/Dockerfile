@@ -1,66 +1,63 @@
-# Builder stage
-FROM python:3.11.11-slim-bullseye AS builder
-
-WORKDIR /app
-
-ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update -qq \
-  && apt-get -qqq install --no-install-recommends -y pkg-config gcc g++ \
-  && apt-get upgrade --assume-yes \
-  && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
-
-# Create virtual environment
-RUN python -m venv venv && ./venv/bin/pip install --no-cache-dir --upgrade pip
-
-# Copy app code
-COPY . .
-
-# Install dependencies (FIXED: torch=2.5.0, gunicorn>=21.0.0, py-cpuinfo, plus necessary libs)
-RUN ./venv/bin/pip install --no-cache-dir \
-      Babel==2.12.1 \
-      torch==2.5.0 --extra-index-url https://download.pytorch.org/whl/cpu \
-      "numpy<2" \
-      celery \
-      redis \
-      flask \
-      requests \
-      argostranslate \
-      py-cpuinfo \
-      python-dotenv \
-      "gunicorn>=21.0.0" \
-      . \
-  && ./venv/bin/python scripts/compile_locales.py \
-  && ./venv/bin/pip cache purge
-
-# Final image
+# ----------------------------------------------------------------------
+# Single-stage Dockerfile for LibreTranslate
+# ----------------------------------------------------------------------
 FROM python:3.11.11-slim-bullseye
 
-# Setup user and group
-RUN addgroup --system --gid 1032 libretranslate \
-    && adduser --system --uid 1032 libretranslate \
-    && mkdir -p /home/libretranslate/.local \
-    && chown -R libretranslate:libretranslate /home/libretranslate/.local
-
-USER libretranslate
+# Set working directory
 WORKDIR /app
 
-# Copy everything from builder
-COPY --from=builder --chown=1032:1032 /app /app
-COPY --from=builder --chown=1032:1032 /app/venv /app/venv
+# Set noninteractive frontend and install build/runtime tools
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -qq \
+    && apt-get install -y --no-install-recommends \
+        pkg-config gcc g++ git ffmpeg libsm6 libxext6 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy application code
+COPY . .
+
+# Install Python dependencies globally
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir \
+        Babel==2.12.1 \
+        Flask-Babel \
+        flask-session \
+        flask-swagger \
+        flask_swagger_ui \
+        translatehtml \
+        APScheduler \
+        langdetect \
+        packaging \
+        LexiLang \
+        expiringdict \
+        torch==2.2.0 --extra-index-url https://download.pytorch.org/whl/cpu \
+        "numpy<2" \
+        uvicorn \
+        gunicorn \
+        flask \
+        requests \
+        celery \
+        redis \
+        python-dotenv \
+        git+https://github.com/LibreTranslate/argos-translate-files.git \
+    && python scripts/compile_locales.py \
+    && pip cache purge
 
 ARG with_models=false
+
 ARG models=""
 
-# Optional model installation
 RUN if [ "$with_models" = "true" ]; then \
       if [ ! -z "$models" ]; then \
-        ./venv/bin/python scripts/install_models.py --load_only_lang_codes "$models"; \
+        python scripts/install_models.py --load_only_lang_codes "$models"; \
       else \
-        ./venv/bin/python scripts/install_models.py; \
+        python scripts/install_models.py; \
       fi \
     fi
 
+ENV PYTHONPATH=/app
+
 EXPOSE 5001
 
-# ENTRYPOINT ["./venv/bin/gunicorn", "--bind", "0.0.0.0:5001", "--workers", "2", "wsgi:app"]
+# CMD ["gunicorn", "wsgi:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:5001", "--reload"]
