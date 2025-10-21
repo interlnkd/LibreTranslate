@@ -82,18 +82,18 @@ jobs:
 
           git checkout main && git fetch origin main && git reset --hard origin/main
 
-          if [ ! -f "/etc/nginx/sites-available/mlsvc.conf" ]; then
+          if [ ! -f "/etc/nginx/sites-available/libretranslate.conf" ]; then
               # Copy nginx.conf from repository to the appropriate location
-              sudo cp app/nginx/nginx.conf /etc/nginx/sites-available/mlsvc.conf
-              sudo ln -s /etc/nginx/sites-available/mlsvc.conf /etc/nginx/sites-enabled
+              sudo cp app/nginx/nginx.conf /etc/nginx/sites-available/libretranslate.conf
+              sudo ln -s /etc/nginx/sites-available/libretranslate.conf /etc/nginx/sites-enabled
           else
               echo "File already exists."
-              sudo rm -f /etc/nginx/sites-available/mlsvc.conf
-              sudo rm -f /etc/nginx/sites-enabled/mlsvc.conf
+              sudo rm -f /etc/nginx/sites-available/libretranslate.conf
+              sudo rm -f /etc/nginx/sites-enabled/libretranslate.conf
 
               # Copy nginx.conf from repository to the appropriate location
-              sudo cp app/nginx/nginx.conf /etc/nginx/sites-available/mlsvc.conf
-              sudo ln -s /etc/nginx/sites-available/mlsvc.conf /etc/nginx/sites-enabled
+              sudo cp app/nginx/nginx.conf /etc/nginx/sites-available/libretranslate.conf
+              sudo ln -s /etc/nginx/sites-available/libretranslate.conf /etc/nginx/sites-enabled
           fi
 
           sudo systemctl restart nginx
