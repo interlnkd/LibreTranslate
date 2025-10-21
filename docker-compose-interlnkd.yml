@@ -86,10 +86,11 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    command: python -m celery -A celery_tasks.celery worker --loglevel=info --max-tasks-per-child=1
+    working_dir: /app
+    command: python -m celery -A libretranslate.celery_tasks.celery worker --loglevel=info --max-tasks-per-child=1 --pool=solo
     depends_on:
-      - libretranslate
-      - redis
+      redis:
+        condition: service_started
     restart: unless-stopped
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
