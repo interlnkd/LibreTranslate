@@ -30,20 +30,20 @@ services:
       - libretranslate_models:/app/.local:rw
     depends_on:
       - redis
-    command:
-      [
-        "gunicorn",
-        "wsgi:app",
-        "--workers",
-        "6",
-        "--worker-class",
-        "uvicorn.workers.UvicornWorker",
-        "-b",
-        "0.0.0.0:5001",
-        "--timeout",
-        "300000000",
-        "--reload"
-      ]
+    # command:
+    #   [
+    #     "gunicorn",
+    #     "wsgi:app",
+    #     "--workers",
+    #     "6",
+    #     "--worker-class",
+    #     "uvicorn.workers.UvicornWorker",
+    #     "-b",
+    #     "0.0.0.0:5001",
+    #     "--timeout",
+    #     "300000000",
+    #     "--reload"
+    #   ]
 
   libretranslate_celery:
     container_name: libretranslate_celery
