@@ -113,14 +113,7 @@ jobs:
 
           chmod +x ./run.sh
 
-          ./run.sh \
-            --port 5001 \
-            --file docker-compose-interlnkd.yml \
-            --rebuild \
-            --download-models \
-            --update-models \
-            --langs "ar,bn,ca,cs,da,de,el,en,es,et,fa,fi,fr,he,hi,hu,id,it,ja,ko,lt,lv,ms,nl,pl,pt,ro,ru,sk,sl,sr,sv,ta,th,tr,uk,vi,zh" \
-            --all
+          ./run.sh --port 5001 --file docker-compose-interlnkd.yml --rebuild --download-models --update-models --langs "de,en" --all
 
           rm .env || true
           docker system prune -a -f
