@@ -1,115 +1,72 @@
-version: "3.8"
+version: '3.8'
 
 services:
   libretranslate:
-    container_name: libretranslate
     build:
       context: .
-      dockerfile: docker/Dockerfile
-    ports:
-      - "5001:5001"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "python scripts/healthcheck.py"]
-      interval: 10s
-      timeout: 4s
-      retries: 4
-      start_period: 5s
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - SLACK_CHANNEL_ID=${SLACK_CHANNEL_ID}
-      - SLACK_TOKEN=${SLACK_TOKEN}
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
-      - ENV_ENVIRONMENT=${ENV_ENVIRONMENT}
+      dockerfile: docker/Dockerfile.interlnkd
+    image: interlnkd_libretranslate
+    # '/start' is the shell script used to run the service
+    command: /start
+    # this volume is used to map the files and folders on the host to the container
+    # so if we change code on the host, code in the docker container will also be changed
     volumes:
-      - .:/app:rw
-      - libretranslate_models:/app/.local:rw
+      - .:/app
+    ports:
+      - 5001:5001
+    env_file:
+      - .env/.dev-sample
+    environment:
+      - FLASK_APP=app
     depends_on:
       - redis
-    # Default: Sync workers (stable and reliable)
-    # command:
-    #   [
-    #     "gunicorn",
-    #     "wsgi:application", 
-    #     "--workers",
-    #     "4",
-    #     "--worker-class",
-    #     "sync",
-    #     "-b",
-    #     "0.0.0.0:5001",
-    #     "--timeout",
-    #     "300",
-    #     "--access-logfile",
-    #     "-",
-    #     "--error-logfile",
-    #     "-"
-    #   ]
-    # Alternative: Gevent workers (for I/O bound workloads)
-    # command:
-    #   [
-    #     "gunicorn",
-    #     "wsgi:application", 
-    #     "--workers",
-    #     "4",
-    #     "--worker-class",
-    #     "gevent",
-    #     "-b",
-    #     "0.0.0.0:5001",
-    #     "--timeout",
-    #     "300",
-    #     "--access-logfile",
-    #     "-",
-    #     "--error-logfile",
-    #     "-"
-    #   ]
-    # For ASGI (if needed):
-    # command:
-    #   [
-    #     "gunicorn",
-    #     "wsgi:asgi_application",
-    #     "--workers",
-    #     "4", 
-    #     "--worker-class",
-    #     "uvicorn.workers.UvicornWorker",
-    #     "-b",
-    #     "0.0.0.0:5001",
-    #     "--timeout",
-    #     "300"
-    #   ]
-
-  libretranslate_celery:
-    container_name: libretranslate_celery
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    working_dir: /app
-    command: python -m celery -A libretranslate.celery_tasks.celery worker --loglevel=info --max-tasks-per-child=1 --pool=solo
-    depends_on:
-      redis:
-        condition: service_started
-    restart: unless-stopped
-    environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - SLACK_CHANNEL_ID=${SLACK_CHANNEL_ID}
-      - SLACK_TOKEN=${SLACK_TOKEN}
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
-      - ENV_ENVIRONMENT=${ENV_ENVIRONMENT}
-    volumes:
-      - .:/app:rw
-      - libretranslate_models:/app/.local:rw
 
   redis:
-    image: redis:latest
-    container_name: libretranslate_redis
-    restart: unless-stopped
+    image: redis:7-alpine
 
-volumes:
-  libretranslate_models:
+  celery_worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.interlnkd
+    image: celery_worker
+    command: /start-celeryworker
+    volumes:
+      - .:/app
+    env_file:
+      - .env/.dev-sample
+    environment:
+      - FLASK_APP=app
+    depends_on:
+      - redis
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.interlnkd
+    image: celery_beat
+    command: /start-celerybeat
+    volumes:
+      - .:/app
+    env_file:
+      - .env/.dev-sample
+    environment:
+      - FLASK_APP=app
+    depends_on:
+      - redis
+
+  flower:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.interlnkd
+    image: celery_flower
+    command: /start-flower
+    volumes:
+      - .:/app
+    env_file:
+      - .env/.dev-sample
+    environment:
+      - FLASK_APP=app
+    ports:
+      - 5557:5555
+    depends_on:
+      - redis

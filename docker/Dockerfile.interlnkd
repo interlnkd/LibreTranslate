@@ -1,0 +1,74 @@
+FROM python:3.11.11-slim-bullseye
+
+ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE 1
+
+WORKDIR /app
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update -qq \
+  && apt-get -qqq install --no-install-recommends -y pkg-config gcc g++ git \
+  && apt-get upgrade --assume-yes \
+  && apt-get clean \
+  && rm -rf /var/lib/apt \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY . .
+
+# Requirements are installed here to ensure they will be cached.
+COPY ./requirements.txt /requirements.txt
+
+# Install package from source code, compile translations
+RUN pip install --no-cache-dir --upgrade pip \
+  && pip install Babel==2.12.1 \
+  && python scripts/compile_locales.py \
+  && pip install torch==$(grep -o -m1 'torch.*;' pyproject.toml|sed 's/[^0-9.]//g') --extra-index-url https://download.pytorch.org/whl/cpu \
+  && pip install "numpy<2" \
+  && pip install -r /requirements.txt \
+  && pip install . \
+  && pip cache purge
+
+COPY ./libretranslate/interlnkd/compose/local/flask/entrypoint /entrypoint
+RUN sed -i 's/\r$//g' /entrypoint
+RUN chmod +x /entrypoint
+
+COPY ./libretranslate/interlnkd/compose/local/flask/start /start
+RUN sed -i 's/\r$//g' /start
+RUN chmod +x /start
+
+COPY ./libretranslate/interlnkd/compose/local/flask/celery/worker/start /start-celeryworker
+RUN sed -i 's/\r$//g' /start-celeryworker
+RUN chmod +x /start-celeryworker
+
+COPY ./libretranslate/interlnkd/compose/local/flask/celery/beat/start /start-celerybeat
+RUN sed -i 's/\r$//g' /start-celerybeat
+RUN chmod +x /start-celerybeat
+
+COPY ./libretranslate/interlnkd/compose/local/flask/celery/flower/start /start-flower
+RUN sed -i 's/\r$//g' /start-flower
+RUN chmod +x /start-flower
+
+RUN addgroup --system --gid 1032 libretranslate \
+  && adduser --system --uid 1032 libretranslate \
+  && mkdir -p /home/libretranslate/.local \
+  && chown -R libretranslate:libretranslate /home/libretranslate/.local
+
+USER libretranslate
+
+WORKDIR /app
+
+ARG with_models=false
+ARG models=""
+
+RUN if [ "$with_models" = "true" ]; then \
+      if [ ! -z "$models" ]; then \
+        python scripts/install_models.py --load_only_lang_codes "$models"; \
+      else \
+        python scripts/install_models.py; \
+      fi \
+    fi
+
+EXPOSE 5001
+
+ENTRYPOINT ["/entrypoint"]

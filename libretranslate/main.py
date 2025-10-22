@@ -6,7 +6,9 @@ from libretranslate.app import create_app
 from libretranslate.default_values import DEFAULT_ARGUMENTS as DEFARGS
 from werkzeug.serving import run_simple
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from .app import ext_celery
 
+celery = ext_celery.celery
 
 def get_args():
     parser = argparse.ArgumentParser(
@@ -261,6 +263,7 @@ def main():
         })
     else:
         app = create_app(args)
+    
 
     if '--wsgi' in sys.argv:
         return app

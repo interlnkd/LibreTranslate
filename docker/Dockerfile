@@ -1,65 +1,46 @@
-# ----------------------------------------------------------------------
-# Single-stage Dockerfile for LibreTranslate
-# ----------------------------------------------------------------------
-FROM python:3.11.11-slim-bullseye
+FROM python:3.11.11-slim-bullseye AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Set noninteractive frontend and install build/runtime tools
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -qq \
-  && apt-get install -y --no-install-recommends \
-  pkg-config gcc g++ git ffmpeg libsm6 libxext6 \
+  && apt-get -qqq install --no-install-recommends -y pkg-config gcc g++ \
+  && apt-get upgrade --assume-yes \
   && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt
 
-# Copy application code
+RUN python -mvenv venv && ./venv/bin/pip install --no-cache-dir --upgrade pip
+
 COPY . .
 
-# Install Python dependencies globally
-RUN pip install --no-cache-dir --upgrade pip \
-  && pip install --no-cache-dir \
-  Babel==2.12.1 \
-  Flask-Babel \
-  flask-session \
-  flask-swagger \
-  flask_swagger_ui \
-  translatehtml \
-  APScheduler \
-  langdetect \
-  packaging \
-  LexiLang \
-  expiringdict \
-  torch==2.2.0 --extra-index-url https://download.pytorch.org/whl/cpu \
-  "numpy<2" \
-  uvicorn \
-  gunicorn \
-  gevent \
-  asgiref \
-  flask \
-  requests \
-  celery \
-  redis \
-  python-dotenv \
-  git+https://github.com/LibreTranslate/argos-translate-files.git \
-  && python scripts/compile_locales.py \
-  && pip cache purge
+# Install package from source code, compile translations
+RUN ./venv/bin/pip install Babel==2.12.1 && ./venv/bin/python scripts/compile_locales.py \
+  && ./venv/bin/pip install torch==$(grep -o -m1 'torch.*;' pyproject.toml|sed 's/[^0-9.]//g') --extra-index-url https://download.pytorch.org/whl/cpu \
+  && ./venv/bin/pip install "numpy<2" \
+  && ./venv/bin/pip install . \
+  && ./venv/bin/pip cache purge
+
+FROM python:3.11.11-slim-bullseye
 
 ARG with_models=false
-
 ARG models=""
 
-RUN if [ "$with_models" = "true" ]; then \
+RUN addgroup --system --gid 1032 libretranslate && adduser --system --uid 1032 libretranslate && mkdir -p /home/libretranslate/.local && chown -R libretranslate:libretranslate /home/libretranslate/.local
+USER libretranslate
+
+COPY --from=builder --chown=1032:1032 /app /app
+WORKDIR /app
+
+COPY --from=builder --chown=1032:1032 /app/venv/bin/ltmanage /usr/bin/
+
+RUN if [ "$with_models" = "true" ]; then  \
+  # initialize the language models
   if [ ! -z "$models" ]; then \
-  python scripts/install_models.py --load_only_lang_codes "$models"; \
+  ./venv/bin/python scripts/install_models.py --load_only_lang_codes "$models";   \
   else \
-  python scripts/install_models.py; \
+  ./venv/bin/python scripts/install_models.py;  \
   fi \
   fi
 
-ENV PYTHONPATH=/app
-
-EXPOSE 5001
-
-CMD ["gunicorn", "wsgi:application", "--workers", "4", "--worker-class", "sync", "-b", "0.0.0.0:5001", "--timeout", "300", "--access-logfile", "-", "--error-logfile", "-"]
+EXPOSE 5000
+ENTRYPOINT [ "./venv/bin/libretranslate", "--host", "*" ]

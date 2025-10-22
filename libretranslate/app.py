@@ -20,7 +20,6 @@ from translatehtml import translate_html
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import http_date
 from werkzeug.utils import secure_filename
-from .celery_tasks import test_task
 
 from libretranslate import flood, remove_translated_files, scheduler, secret, security, storage
 from libretranslate.language import model2iso, iso2model, detect_languages, improve_translation_formatting
@@ -37,6 +36,12 @@ from libretranslate.locales import (
 
 from .api_keys import Database, RemoteDatabase
 from .suggestions import Database as SuggestionsDatabase
+from .interlnkd.translations.translations import translations_blueprint
+from .interlnkd.config import config
+from .interlnkd.celery_utils import make_celery
+
+from flask_celeryext import FlaskCeleryExt
+ext_celery = FlaskCeleryExt(create_celery_app=make_celery)
 
 # Rough map of emoji characters
 emojis = {e: True for e in \
@@ -184,6 +189,11 @@ def detect_translatable(src_texts):
 
 
 def create_app(args):
+    config_name = getattr(args, "config_name", None)
+
+    if config_name is None:
+        config_name = os.environ.get("FLASK_CONFIG", "development")
+
     from libretranslate.init import boot
 
     boot(args.load_only, args.update_models, args.force_update_models)
@@ -485,12 +495,6 @@ def create_app(args):
         response.headers['Expires'] = '-1'
 
       return response
-
-    @bp.get("/test-task")
-    @limiter.exempt
-    def test_first_task():
-        task = test_task.apply_async(args=[], priority=4)
-        return {"task_id": task.id}
 
     @bp.get("/languages")
     @limiter.exempt
@@ -1294,12 +1298,18 @@ def create_app(args):
     app.config["SESSION_TYPE"] = "filesystem"
     app.config["SESSION_FILE_DIR"] = os.path.join("db", "sessions")
     app.config["JSON_AS_ASCII"] = False
+    app.config.from_object(config[config_name])
+    ext_celery.init_app(app) 
+
     Session(app)
 
     if args.debug:
         app.config["TEMPLATES_AUTO_RELOAD"] = True
-
+    
+    # interlnkd modification
     app.register_blueprint(bp)
+    app.register_blueprint(translations_blueprint)
+
 
     limiter.init_app(app)
 
@@ -1332,5 +1342,10 @@ def create_app(args):
     swaggerui_blueprint = get_swaggerui_blueprint(swagger_url, args.url_prefix + api_url)
     swaggerui_blueprint.url_prefix = "/docs"
     app.register_blueprint(swaggerui_blueprint)
+
+    # shell context for flask cli
+    @app.shell_context_processor
+    def ctx():
+        return {"app": app}
 
     return app
