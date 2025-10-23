@@ -109,6 +109,9 @@ jobs:
           echo "SLACK_CHANNEL_ID=${{env.SLACK_CHANNEL_ID}}" >> .env
           echo "SLACK_TOKEN=${{env.SLACK_TOKEN}}" >> .env
           echo "SLACK_WEBHOOK_URL=${{env.SLACK_WEBHOOK_URL}}" >> .env
+          echo "AWS_SSH_PRIVATE_KEY=${{env.AWS_SSH_PRIVATE_KEY}}" >> .env
+          echo "AWS_UBUNTU_HOST=${{env.AWS_UBUNTU_HOST}}" >> .env
+          echo "AWS_UBUNTU_USER=${{env.AWS_UBUNTU_USER}}" >> .env
           pwd
 
           chmod +x ./run.sh
