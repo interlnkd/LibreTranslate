@@ -15,7 +15,7 @@ services:
     ports:
       - 5001:5001
     env_file:
-      - .env/.prod
+      - .env.prod
     environment:
       - FLASK_APP=app
     depends_on:
@@ -33,7 +33,7 @@ services:
     volumes:
       - .:/app
     env_file:
-      - .env/.prod
+      - .env.prod
     environment:
       - FLASK_APP=app
     depends_on:
@@ -48,7 +48,7 @@ services:
     volumes:
       - .:/app
     env_file:
-      - .env/.prod
+      - .env.prod
     environment:
       - FLASK_APP=app
     depends_on:
@@ -63,7 +63,7 @@ services:
     volumes:
       - .:/app
     env_file:
-      - .env/.prod
+      - .env.prod
     environment:
       - FLASK_APP=app
     ports:
