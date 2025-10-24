@@ -81,21 +81,28 @@ if [ "$REBUILD" = true ]; then
   echo "✅ Rebuild complete."
 fi
 
-if [ "$UPDATE_MODELS" = true ] || [ "$DOWNLOAD_MODELS" = true ]; then
-  echo "🔄 Downloading LibreTranslate models..."
-  # NOTE: The LT_LOAD_ONLY export above will be overridden here by '--load_only_lang_codes'
-  if [ -n "$LANGS" ]; then
-    echo "📦 Downloading only models for languages: $LANGS"
-    $COMPOSE_CMD run --rm --entrypoint "python" libretranslate scripts/install_models.py --load_only_lang_codes "$LANGS"
-  else
-    $COMPOSE_CMD run --rm --entrypoint "python" libretranslate scripts/install_models.py
-  fi
-  echo "✅ Model download complete."
-
-  if [ "$DOWNLOAD_MODELS" = true ]; then
-    echo "🚀 Models downloaded. Exiting as requested by --download-models."
+# --- MODEL DOWNLOAD / UPDATE LOGIC ---
+if [ "$DOWNLOAD_MODELS" = true ]; then
+    echo "🔄 Downloading all LibreTranslate models..."
+    if [ -n "$LANGS" ]; then
+        echo "📦 Downloading models only for languages: $LANGS"
+        $COMPOSE_CMD run --rm --entrypoint "python" libretranslate scripts/install_models.py --load_only_lang_codes "$LANGS"
+    else
+        $COMPOSE_CMD run --rm --entrypoint "python" libretranslate scripts/install_models.py
+    fi
+    echo "✅ Models downloaded. Exiting as requested by --download-models."
     exit 0
-  fi
+elif [ "$UPDATE_MODELS" = true ]; then
+    echo "🔄 Updating LibreTranslate models..."
+    if [ -n "$LANGS" ]; then
+        echo "📦 Updating models only for languages: $LANGS"
+        $COMPOSE_CMD run --rm --entrypoint "python" libretranslate scripts/install_models.py --load_only_lang_codes "$LANGS" --update
+    else
+        $COMPOSE_CMD run --rm --entrypoint "python" libretranslate scripts/install_models.py --update
+    fi
+    echo "✅ Model update complete."
+else
+    echo "ℹ️ No model download or update requested."
 fi
 
 # Modify the final 'up' commands to use the dynamically set $UP_FLAG

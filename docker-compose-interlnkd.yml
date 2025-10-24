@@ -12,6 +12,7 @@ services:
     # so if we change code on the host, code in the docker container will also be changed
     volumes:
       - .:/app
+      - libretranslate_models:/home/libretranslate/.local/share/argos-translate
     ports:
       - 5001:5001
     env_file:
@@ -34,6 +35,7 @@ services:
     command: /start-celeryworker
     volumes:
       - .:/app
+      - libretranslate_models:/home/libretranslate/.local/share/argos-translate
     env_file:
       - .env
     environment:
@@ -49,6 +51,7 @@ services:
     command: /start-celerybeat
     volumes:
       - .:/app
+      - libretranslate_models:/home/libretranslate/.local/share/argos-translate
     env_file:
       - .env
     environment:
@@ -64,6 +67,7 @@ services:
     command: /start-flower
     volumes:
       - .:/app
+      - libretranslate_models:/home/libretranslate/.local/share/argos-translate
     env_file:
       - .env
     environment:
@@ -72,3 +76,6 @@ services:
       - 5557:5555
     depends_on:
       - redis
+
+volumes:
+  libretranslate_models:

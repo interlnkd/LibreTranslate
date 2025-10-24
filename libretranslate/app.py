@@ -873,7 +873,7 @@ def create_app(args):
             json = get_json_dict(request)
             task = generate_product_translations.apply_async(args=[json['file_key']], priority=4)
             
-            return jsonify({"task": task.id}), 400
+            return jsonify({"task": task.id}), 200
         except Exception as e:
           return jsonify({"message": "Internal error"}), 500
 
