@@ -24,6 +24,13 @@ async def translate_csv_file(key, market):
                     )
 
                     return None
+                
+            with open(f"{S3_URL}{key}", 'rb') as s3_file:
+                df = pd.read_csv(s3_file, low_memory=False)
+                print(df.head(100), flush=True)
+
+                # await delete_file_from_s3(key, folder_prefix=ML_READY_FILE_FOLDER + f'/{market}')
+                # print(f"Deleted {key}", flush=True)
         else:
             print("Please provide a valid csv file", flush=True)
 
@@ -62,3 +69,14 @@ async def move_file_to_new_folder(new_folder, file_name, bucket, source_path):
 def is_csv_file(file_name):
     _, file_extension = os.path.splitext(file_name)
     return file_extension.lower() == '.csv'
+
+
+async def delete_file_from_s3(file_key, folder_prefix):
+    try:
+        s3_client = get_s3_client()
+        if s3_client:
+            s3_client.delete_object(Bucket=INTERLNKD_LOVELACE_PRIVATE, Key=file_key)
+            print(f"The file '{file_key}' in the folder '{folder_prefix}' has been deleted.", flush=True)
+        return
+    except Exception as e:
+        print(f"Error: {str(e)}")

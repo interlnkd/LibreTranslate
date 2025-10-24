@@ -19,6 +19,7 @@ services:
     environment:
       - FLASK_APP=app
       - LT_LOAD_ONLY=${LT_LOAD_ONLY}
+      - LT_UPDATE_MODELS=false
     depends_on:
       - redis
 
@@ -37,7 +38,6 @@ services:
       - .env.prod
     environment:
       - FLASK_APP=app
-      - LT_LOAD_ONLY=${LT_LOAD_ONLY}
     depends_on:
       - redis
 
@@ -53,7 +53,6 @@ services:
       - .env.prod
     environment:
       - FLASK_APP=app
-      - LT_LOAD_ONLY=${LT_LOAD_ONLY}
     depends_on:
       - redis
 
@@ -69,7 +68,6 @@ services:
       - .env.prod
     environment:
       - FLASK_APP=app
-      - LT_LOAD_ONLY=${LT_LOAD_ONLY}
     ports:
       - 5557:5555
     depends_on:
