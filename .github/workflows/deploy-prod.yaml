@@ -95,7 +95,7 @@ jobs:
      
           chmod +x ./run.sh
 
-          ./run.sh --port 5001 --file docker-compose-interlnkd.prod.yml --rebuild --download-models --update-models --all
+          ./run.sh --file docker-compose-interlnkd.prod.yml --rebuild --download-models --update-models --all
 
           docker system prune -a -f
 

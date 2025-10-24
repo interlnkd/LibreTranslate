@@ -52,7 +52,9 @@ RUN chmod +x /start-flower
 RUN addgroup --system --gid 1032 libretranslate \
   && adduser --system --uid 1032 libretranslate \
   && mkdir -p /home/libretranslate/.local/share/argos-translate/packages \
-  && chown -R libretranslate:libretranslate /home/libretranslate/.local
+  && mkdir -p /app/db/sessions \
+  && chown -R libretranslate:libretranslate /home/libretranslate/.local \
+  && chown -R libretranslate:libretranslate /app/db
 
 USER libretranslate
 
