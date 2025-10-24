@@ -137,3 +137,4 @@ api_keys.db
 suggestions.db
 *.DS_Store
 *.env
+.env.prod
