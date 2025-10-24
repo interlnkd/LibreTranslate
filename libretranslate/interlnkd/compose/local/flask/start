@@ -4,4 +4,4 @@ set -o errexit
 set -o pipefail
 set -o nounset
 
-exec gunicorn --bind 0.0.0.0:5001 "wsgi:app"
+exec gunicorn --workers 5 --bind 0.0.0.0:5001 "wsgi:app"

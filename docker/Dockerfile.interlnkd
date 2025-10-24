@@ -49,12 +49,12 @@ COPY ./libretranslate/interlnkd/compose/local/flask/celery/flower/start /start-f
 RUN sed -i 's/\r$//g' /start-flower
 RUN chmod +x /start-flower
 
-RUN addgroup --system --gid 1032 libretranslate \
-  && adduser --system --uid 1032 libretranslate \
-  && mkdir -p /home/libretranslate/.local \
-  && chown -R libretranslate:libretranslate /home/libretranslate/.local
+# RUN addgroup --system --gid 1032 libretranslate \
+#   && adduser --system --uid 1032 libretranslate \
+#   && mkdir -p /home/libretranslate/.local \
+#   && chown -R libretranslate:libretranslate /home/libretranslate/.local
 
-USER libretranslate
+# USER libretranslate
 
 WORKDIR /app
 

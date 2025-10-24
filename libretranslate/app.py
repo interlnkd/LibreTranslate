@@ -8,6 +8,7 @@ from datetime import datetime
 from functools import wraps
 from html import unescape
 from timeit import default_timer
+from flask import request, jsonify
 
 import argostranslatefiles
 from argostranslatefiles import get_supported_formats
@@ -39,8 +40,10 @@ from .suggestions import Database as SuggestionsDatabase
 from .interlnkd.translations.translations import translations_blueprint
 from .interlnkd.config import config
 from .interlnkd.celery_utils import make_celery
-
+from .interlnkd.utils import is_csv_file
+from .interlnkd.translations.tasks import generate_product_translations
 from flask_celeryext import FlaskCeleryExt
+
 ext_celery = FlaskCeleryExt(create_celery_app=make_celery)
 
 # Rough map of emoji characters
@@ -862,6 +865,17 @@ def create_app(args):
         except Exception as e:
             raise e
             abort(500, description=_("Cannot translate text: %(text)s", text=str(e)))
+
+    @bp.post("/translate_s3_file")
+    async def translate_s3_file():
+        try:
+          if request.is_json:
+            json = get_json_dict(request)
+            task = generate_product_translations.apply_async(args=[json['file_key']], priority=4)
+            
+            return jsonify({"task": task.id}), 400
+        except Exception as e:
+          return jsonify({"message": "Internal error"}), 500
 
     @bp.post("/translate_file")
     @access_check
