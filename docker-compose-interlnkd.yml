@@ -16,7 +16,7 @@ services:
     ports:
       - 5001:5001
     env_file:
-      - .env
+      - .env.prod
     environment:
       - FLASK_APP=app
       - LT_LOAD_ONLY=${LT_LOAD_ONLY}
@@ -26,6 +26,8 @@ services:
 
   redis:
     image: redis:7-alpine
+    ports:
+      - "6380:6380"
 
   celery_worker:
     build:
@@ -37,7 +39,7 @@ services:
       - .:/app
       - libretranslate_models:/home/libretranslate/.local/share/argos-translate
     env_file:
-      - .env
+      - .env.prod
     environment:
       - FLASK_APP=app
     depends_on:
@@ -53,7 +55,7 @@ services:
       - .:/app
       - libretranslate_models:/home/libretranslate/.local/share/argos-translate
     env_file:
-      - .env
+      - .env.prod
     environment:
       - FLASK_APP=app
     depends_on:
@@ -69,7 +71,7 @@ services:
       - .:/app
       - libretranslate_models:/home/libretranslate/.local/share/argos-translate
     env_file:
-      - .env
+      - .env.prod
     environment:
       - FLASK_APP=app
     ports:

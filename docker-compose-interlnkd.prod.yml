@@ -28,6 +28,7 @@ services:
     image: redis:7-alpine
     ports:
       - "6380:6380"
+    command: redis-server --port 6380
 
   celery_worker:
     build:
