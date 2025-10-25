@@ -80,7 +80,6 @@ async def upload_csv_to_bucket(final_df, destination_folder, file_name):
     try:
         csv_buffer = StringIO()
         final_df.to_csv(csv_buffer, index=False)
-        final_df = final_df.iloc[0:5]
 
         await upload_data_to_s3(csv_buffer, INTERLNKD_LOVELACE_PRIVATE, destination_folder + file_name)
         print(f"Uploaded to {destination_folder}", flush=True)
@@ -126,7 +125,7 @@ async def translate_csv_file(key, market):
             df["raw_category"] = df["raw_category"].fillna("oov").astype(str)
 
             max_workers = 5
-            chunk_size = 200
+            chunk_size = 1000
 
             df = translate_column(
                 df,
@@ -312,16 +311,17 @@ def translate_batch(payload):
         tgt_lang,
         translatable,
         num_alternatives,
-        max_workers=20,
+        max_workers=5,
     )
 
     return result
 
 
-def translate_inner_batch(q, src_lang, tgt_lang, translatable, num_alternatives, max_workers=5):
+def translate_inner_batch(q, src_lang, tgt_lang, translatable, num_alternatives, max_workers=5, inner_group_size=50):
     batch_results = []
+    
+    groups = [q[i:i + inner_group_size] for i in range(0, len(q), inner_group_size)]
 
-    # Function that performs the translation for one text
     def executor_translate(text):
         translator = src_lang.get_translation(tgt_lang)
 
@@ -339,24 +339,16 @@ def translate_inner_batch(q, src_lang, tgt_lang, translatable, num_alternatives,
 
         return translated_text
 
-    # === Run translations concurrently ===
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [executor.submit(executor_translate, text) for text in q]
-
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    translated_text = future.result()
-                    batch_results.append(translated_text)
-                except Exception as e:
-                    print(f"Translation failed: {e}", flush=True)
-                    raise
+            for group in groups:
+                group_results = list(executor.map(executor_translate, group))
+                batch_results.extend(group_results)
 
     except Exception as e:
         print(f"Batch failed: {e}", flush=True)
         raise
 
-    # === Combine and return ===
     return {
         "translatedText": batch_results,
     }
