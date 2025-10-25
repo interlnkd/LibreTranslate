@@ -123,8 +123,8 @@ async def translate_csv_file(key, market):
             df["product_name"] = df["product_name"].fillna("oov").astype(str)
             df["raw_category"] = df["raw_category"].fillna("oov").astype(str)
 
-            max_workers = 100
-            chunk_size = 10
+            max_workers = 20
+            chunk_size = 200
 
             df = translate_column(
                 df,
@@ -158,9 +158,9 @@ async def translate_csv_file(key, market):
 
             destination_folder = TRANSLATIONS_COMPLETED_FOLDER + f'{market}/'
             random_uuid = uuid.uuid4()
-            new_file_name = f"{str(random_uuid)}.csv"
+            # new_file_name = f"{str(random_uuid)}.csv"
 
-            await upload_csv_to_bucket(df, destination_folder, new_file_name)
+            await upload_csv_to_bucket(df, destination_folder, file_name)
 
         # Optional: delete original file after processing
         await delete_file_from_s3(key, folder_prefix=TRANSLATIONS_PENDING_FOLDER + f'{market}')
