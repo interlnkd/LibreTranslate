@@ -93,7 +93,9 @@ async def upload_csv_to_bucket(final_df, destination_folder, file_name):
 
 
 async def translate_csv_file(key, market):
+    start_time = time.time()
     file_name = os.path.basename(key)
+
     print([l.code for l in load_languages()], flush=True)
 
     try:
@@ -123,7 +125,7 @@ async def translate_csv_file(key, market):
             df["product_name"] = df["product_name"].fillna("oov").astype(str)
             df["raw_category"] = df["raw_category"].fillna("oov").astype(str)
 
-            max_workers = 20
+            max_workers = 5
             chunk_size = 200
 
             df = translate_column(
@@ -158,13 +160,15 @@ async def translate_csv_file(key, market):
 
             destination_folder = TRANSLATIONS_COMPLETED_FOLDER + f'{market}/'
             random_uuid = uuid.uuid4()
-            # new_file_name = f"{str(random_uuid)}.csv"
+            new_file_name = f"{str(random_uuid)}.csv"
 
             await upload_csv_to_bucket(df, destination_folder, file_name)
 
         # Optional: delete original file after processing
         await delete_file_from_s3(key, folder_prefix=TRANSLATIONS_PENDING_FOLDER + f'{market}')
         print(f"Deleted {key}", flush=True)
+        elapsed = time.time() - start_time
+        print(f"Translated {len(df)} rows in {elapsed / 60:.2f} minutes", flush=True)
 
         return key, market
 
@@ -205,7 +209,6 @@ def translate_column(
     chunks = [texts_to_translate[i:i + chunk_size] for i in range(0, len(texts_to_translate), chunk_size)]
 
     translated_texts = []
-    start_time = time.time()
 
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -232,10 +235,7 @@ def translate_column(
          
     df[target_column] = translated_texts
 
-    elapsed = time.time() - start_time
-    print(f"Translated {len(df)} rows in {elapsed / 60:.2f} minutes", flush=True)
     return df
-
 
 
 def detect_translatable(src_texts):
@@ -266,7 +266,6 @@ def translate_batch(payload):
     target_lang = iso2model(payload.get("target"))
     text_format = payload.get("format")
     num_alternatives = 0 
-    print(source_lang, 'source_lang', flush=True)
     
     if not isinstance(q, list) or not q:
         # If it's not a batch (list) or the list is empty, treat as an error for a batch processor
@@ -290,29 +289,42 @@ def translate_batch(payload):
 
     # 2. Language Code Check (Replaced abort with raise)
     src_lang = next(iter([l for l in languages if l.code == detected_src_lang["language"]]), None)
+
     if src_lang is None:
         print([l.code for l in languages], 'available languages', flush=True)
         raise ValueError(f"{source_lang} is not supported")
 
     tgt_lang = next(iter([l for l in languages if l.code == target_lang]), None)
+
     if tgt_lang is None:
         raise ValueError(f"{target_lang} is not supported")
 
     # 3. Format Check (Replaced abort with raise)
     if not text_format:
         text_format = "text"
+
     if text_format not in ["text", "html"]:
         raise ValueError(f"{text_format} format is not supported")
 
-    # === Translation Logic (Only keeping the batch path) ===
-    
+    result = translate_inner_batch(
+        q,
+        src_lang,
+        tgt_lang,
+        translatable,
+        num_alternatives,
+        max_workers=20,
+    )
+
+    return result
+
+
+def translate_inner_batch(q, src_lang, tgt_lang, translatable, num_alternatives, max_workers=5):
     batch_results = []
-    batch_alternatives = []
-    
-    for text in q:
+
+    # Function that performs the translation for one text
+    def executor_translate(text):
         translator = src_lang.get_translation(tgt_lang)
-        
-        # Translator Availability Check (Replaced abort with raise)
+
         if translator is None:
             raise ValueError(
                 f"{tgt_lang.name} ({tgt_lang.code}) is not available as a target language "
@@ -320,26 +332,31 @@ def translate_batch(payload):
             )
 
         if translatable:
-            if text_format == "html":
-                translated_text = unescape(str(translate_html(translator, text)))
-                alternatives = []
-            else:
-                hypotheses = translator.hypotheses(text, num_alternatives + 1)
-                translated_text = unescape(improve_translation_formatting(text, hypotheses[0].value))
-                alternatives = filter_unique([unescape(improve_translation_formatting(text, hypotheses[i].value)) for i in range(1, len(hypotheses))], translated_text)
+            hypotheses = translator.hypotheses(text, num_alternatives + 1)
+            translated_text = unescape(improve_translation_formatting(text, hypotheses[0].value))
         else:
-            translated_text = text # Cannot translate, send the original text back
-            alternatives = []
+            translated_text = text
 
-        batch_results.append(translated_text)
-        batch_alternatives.append(alternatives)
+        return translated_text
 
-    # === Result Formatting (Replaced jsonify with return dict) ===
-    result = {"translatedText": batch_results}
+    # === Run translations concurrently ===
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(executor_translate, text) for text in q]
 
-    if source_lang == "auto":
-        result["detectedLanguage"] = [model2iso(detected_src_lang)] * len(q)
-    if num_alternatives > 0:
-        result["alternatives"] = batch_alternatives
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    translated_text = future.result()
+                    batch_results.append(translated_text)
+                except Exception as e:
+                    print(f"Translation failed: {e}", flush=True)
+                    raise
 
-    return result
+    except Exception as e:
+        print(f"Batch failed: {e}", flush=True)
+        raise
+
+    # === Combine and return ===
+    return {
+        "translatedText": batch_results,
+    }
