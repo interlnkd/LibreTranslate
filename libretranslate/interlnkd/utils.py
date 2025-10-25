@@ -125,7 +125,7 @@ async def translate_csv_file(key, market):
             df["raw_category"] = df["raw_category"].fillna("oov").astype(str)
 
             max_workers = 5
-            chunk_size = 1000
+            chunk_size = 500
 
             df = translate_column(
                 df,
