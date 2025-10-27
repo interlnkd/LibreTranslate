@@ -311,7 +311,7 @@ def translate_batch(payload):
         tgt_lang,
         translatable,
         num_alternatives,
-        max_workers=100,
+        max_workers=5,
     )
 
     return result
