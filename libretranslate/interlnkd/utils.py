@@ -122,20 +122,20 @@ async def translate_csv_file(key, market):
 
             df["description"] = df["description"].fillna("oov").astype(str)
             df["product_name"] = df["product_name"].fillna("oov").astype(str)
-            df["raw_category"] = df["raw_category"].fillna("oov").astype(str)
+            # df["raw_category"] = df["raw_category"].fillna("oov").astype(str)
 
             max_workers = 5
             chunk_size = 500
 
-            df = translate_column(
-                df,
-                column="raw_category",
-                target_column="raw_category_en",
-                source_lang=market,
-                target_lang="en",
-                chunk_size=chunk_size,
-                max_workers=max_workers
-            )
+            # df = translate_column(
+            #     df,
+            #     column="raw_category",
+            #     target_column="raw_category_en",
+            #     source_lang=market,
+            #     target_lang="en",
+            #     chunk_size=chunk_size,
+            #     max_workers=max_workers
+            # )
 
             df = translate_column(
                 df,
@@ -311,7 +311,7 @@ def translate_batch(payload):
         tgt_lang,
         translatable,
         num_alternatives,
-        max_workers=5,
+        max_workers=100,
     )
 
     return result
